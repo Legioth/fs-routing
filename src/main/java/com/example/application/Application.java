@@ -14,6 +14,7 @@ import com.vaadin.flow.theme.Theme;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,13 +50,11 @@ public class Application implements AppShellConfigurator {
             event.addIndexHtmlRequestListener(response -> {
                 try {
                     URL source = Application.class.getResource("/META-INF/VAADIN/views.json");
-                    if (source == null) {
-                        System.err.println("No views.json");
-                        return;
+                    Map<String, ClientView> clientViews = new HashMap<>();
+                    if (source != null) {
+                        clientViews  = mapper.readValue(source, new TypeReference<Map<String, ClientView>>() {                        
+                        });
                     }
-
-                    Map<String, ClientView> clientViews = mapper.readValue(source, new TypeReference<Map<String, ClientView>>() {                        
-                    });
 
                     List<AvailableView> availableViews = new ArrayList<>();
                     clientViews.forEach((id, clientView) -> {
