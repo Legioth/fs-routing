@@ -48,12 +48,16 @@ function findExports(node: ts.Node) : ViewData | undefined {
   }
 }
 
+function getRelativeLocation(file: string) {
+  return file.substring(viewsDir.length).replace(/\\/g, "/");
+}
+
 async function processHotUpdate(read: () => string | Promise<string>, file: string) {
   try {
     const oldCurrentViews = JSON.stringify(currentViews);
 
     const content = await read();
-    const relativeLocation = file.substring(viewsDir.length);
+    const relativeLocation = getRelativeLocation(file);
 
     const result = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true);
     const exports = findExports(result);
@@ -123,7 +127,7 @@ const viewWatcher: PluginOption = {
   name: "vite-plugin-view-watch",
   async buildStart() {
     for await (const file of walk(root + '/views/')) {
-      const relativeLocation = file.substring(viewsDir.length);
+      const relativeLocation = getRelativeLocation(file);
 
       const content = await fs.promises.readFile(file, {encoding: "utf-8"});
 
@@ -144,7 +148,7 @@ const viewWatcher: PluginOption = {
       if (!file.startsWith(viewsDir)) {
         return;
       }
-      const relativeLocation = file.substring(viewsDir.length);
+      const relativeLocation = getRelativeLocation(file);
       if (relativeLocation in currentViews) {
         delete currentViews[relativeLocation];
         writeFiles();
