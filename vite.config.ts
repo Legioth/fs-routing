@@ -100,7 +100,11 @@ let viewsDir: string;
 function writeFiles() {
   const logError: fs.NoParamCallback = (err) => { if (err) console.error(err); };
 
-  const viewsJsonName = path.dirname(outDir) + '/views.json';
+  const viewsJsonDirectory = path.dirname(outDir);
+  if (!fs.existsSync(viewsJsonDirectory)) {
+    fs.mkdirSync(viewsJsonDirectory);
+  }
+  const viewsJsonName = viewsJsonDirectory + '/views.json';
   fs.writeFile(viewsJsonName, JSON.stringify(currentViews), logError);
 
   let exports = '';
