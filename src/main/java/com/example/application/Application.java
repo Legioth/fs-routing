@@ -1,5 +1,6 @@
 package com.example.application;
 
+import com.example.application.auth.DynamicRouteService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,10 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.server.RouteRegistry;
 import com.vaadin.flow.server.VaadinServiceInitListener;
 import com.vaadin.flow.theme.Theme;
+import jakarta.annotation.security.RolesAllowed;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 import java.io.IOException;
 import java.net.URL;
@@ -18,16 +23,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-
 /**
  * The entry point of the Spring Boot application.
- *
+ * <p>
  * Use the @PWA annotation make the application installable on phones, tablets
  * and some desktop browsers.
- *
  */
 @SpringBootApplication
 @Theme(value = "fs-routing")
@@ -40,12 +40,13 @@ public class Application implements AppShellConfigurator {
     record ClientView(String defaultName, String metaValue) {
     }
 
-    record AvailableView(String id, String route, boolean clientSide, String title, ObjectNode metadata) {
+    record AvailableView(String id, String route, boolean clientSide, String title, ObjectNode metadata,
+                         String[] rolesAllowed) {
 
     }
 
     @Bean
-    VaadinServiceInitListener routesInject(ObjectMapper mapper) {
+    VaadinServiceInitListener routesInject(ObjectMapper mapper, DynamicRouteService dynamicRouteService) {
         return (event) -> {
             event.addIndexHtmlRequestListener(response -> {
                 try {
@@ -74,6 +75,10 @@ public class Application implements AppShellConfigurator {
                         if (title.isBlank()) {
                             title = id;
                         }
+                        String[] rolesAllowed = null;
+                        if (metadata != null && metadata.has("rolesAllowed")) {
+                            rolesAllowed = mapper.convertValue(metadata.get("rolesAllowed"), String[].class);
+                        }
 
                         // Remove .tsx, .ts, .jsx or .js extensions
                         String route = "/" + id.replaceAll("\\.[tj]sx?$", "");
@@ -89,9 +94,14 @@ public class Application implements AppShellConfigurator {
 
                         // /{id} -> /:id
                         route = route.replaceAll("/\\{([^/}]+)\\}", "/:$1");
-                        
-                        availableViews.add(new AvailableView(id, route, true, title, metadata));
+
+                        availableViews.add(new AvailableView(id, route, true, title, metadata, rolesAllowed));
                     });
+
+                    availableViews.stream()
+                            .filter(availableView -> availableView.rolesAllowed == null
+                                    || availableView.rolesAllowed.length == 0)
+                            .forEach(availableView -> dynamicRouteService.addPublicRoute(availableView.route));
 
                     RouteRegistry registry = event.getSource().getRouter().getRegistry();
                     registry.getRegisteredRoutes().forEach(serverView -> {
@@ -106,7 +116,16 @@ public class Application implements AppShellConfigurator {
                             title = serverView.getNavigationTarget().getSimpleName();
                         }
 
-                        availableViews.add(new AvailableView(url, url, false, title, null));
+                        String[] rolesAllowed = null;
+                        RolesAllowed rolesAllowedAnno = viewClass.getAnnotation(RolesAllowed.class);
+                        // Add support for @PermitAll, @DenyAll,
+                        // and empty means that user needs to authenticate as well
+                        // *with base implementation of VaadinWebSecurity
+                        if (rolesAllowedAnno != null) {
+                            rolesAllowed = rolesAllowedAnno.value();
+                        }
+
+                        availableViews.add(new AvailableView(url, url, false, title, null, rolesAllowed));
                     });
 
                     if (availableViews.isEmpty()) {

@@ -19,7 +19,8 @@ interface FsView  {
   clientSide: boolean,
   route: string,
   title: string,
-  metadata: any;
+  metadata: any,
+  rolesAllowed: string[],
 }
 
 export function getFsViews(): FsView[] {
