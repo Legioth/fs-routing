@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom"
 
 const meta = {
     "title": "Optional Parameter",
-    "rolesAllowed": ["ADMIN"]
+    "rolesAllowed": ["ROLE_ADMIN"]
 }
 
 export default function OptionalParameter() {

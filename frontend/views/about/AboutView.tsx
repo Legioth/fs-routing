@@ -1,6 +1,6 @@
 const meta = {
   "title": "About",
-  "rolesAllowed": ["USER"]
+  "rolesAllowed": ["ROLE_USER"]
 }
 
 export default function AboutView() {
